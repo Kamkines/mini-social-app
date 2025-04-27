@@ -1,8 +1,12 @@
+# Это главный файл проекта для зависимостей и настроек.
+# тут же можно устанавливать куда смотреть в плане assets-файлов (шрифты, статичные изображения, видео и т.п.), надо явно тут показывать на assets, иначе не поймет сборщик, что это надо
+
 name: mini_social_app
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+#pub.dev - это место, где люди выкладывают библиотеки и пакеты Flutter/Dart (например, как NPM).
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -27,7 +31,7 @@ environment:
 # dependencies can be manually updated by changing the version numbers below to
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
-dependencies:
+dependencies: # установка зависимостей
   flutter:
     sdk: flutter
 
@@ -35,7 +39,14 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
-dev_dependencies:
+dev_dependencies: # установка зависимостей для разработки
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+
   flutter_test:
     sdk: flutter
 
@@ -87,3 +98,5 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+
