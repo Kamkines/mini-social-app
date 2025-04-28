@@ -1,21 +1,33 @@
 import 'package:flutter/material.dart';
-import '../data/test_data.dart'; 
+import './post_detail_screen.dart';
+import '../data/test_data.dart';
 
-class HomeScreen extends StatelessWidget { //Это означает, что HomeScreen не будет иметь состояния, которое меняется по ходу работы приложения.
+class HomeScreen extends StatelessWidget {
+  //Это означает, что HomeScreen не будет иметь состояния, которое меняется по ходу работы приложения.
   @override
   Widget build(BuildContext context) {
-    return Scaffold( // контейнер для, благодаря окоторому происходит вся визуализация
-      appBar: AppBar(
-        title: Text('News feed'),
-      ),
-      body: ListView.builder( // ListView.builder - стандартный виджет для отображения списка, который ты должен использовать для создания списка с прокруткой.
-        itemCount: testPosts.length, // определяет, сколько элементов будет в списке (необязательное поле, либо же лучше брать из бд)
-        itemBuilder: (context, index) { // помогает для каждого элемента отобразить данные 
+    return Scaffold(
+      // контейнер для, благодаря которому происходит вся визуализация
+      appBar: AppBar(title: Text('News feed')),
+      body: ListView.builder(
+        // ListView.builder - стандартный виджет для отображения списка, который ты должен использовать для создания списка с прокруткой.
+        // builder - функция строящий новый экран
+        itemCount:
+            testPosts
+                .length, // определяет, сколько элементов будет в списке (необязательное поле, либо же лучше брать из бд)
+        itemBuilder: (context, index) {
+          // помогает для каждого элемента отобразить данные
           final post = testPosts[index];
           return ListTile(
             title: Text(post.title),
             subtitle: Text(post.description),
-            onTap: () { // Переход на экран поста (пока пустой)
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PostDetailScreen(post: post),
+                ),
+              );
             },
           );
         },
@@ -45,5 +57,10 @@ Scaffold - это основной контейнер, который визуа
 
 builder — это механизм, который создаёт виджеты, когда это необходимо (по мере прокрутки), и помогает управлять списками и другими коллекциями элементов более эффективно. 
 Это одна из ключевых особенностей Flutter для работы с длинными списками или сложными интерфейсами, где нужно эффективно работать с памятью.
+
+
+Navigator.push — это команда Flutter'а перейти на новый экран (открывается поверх старой)
+context — это информация о том, где в дереве виджетов мы находимся
+MaterialPageRoute — это способ сказать Flutter'(«Открой новый экран с анимацией, как в стандартных приложениях для Android/iOS»)
 
 */
