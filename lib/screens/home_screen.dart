@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import './post_detail_screen.dart';
 import '../data/test_data.dart';
+import './auth_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   //Это означает, что HomeScreen не будет иметь состояния, которое меняется по ходу работы приложения.
@@ -8,7 +9,20 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       // контейнер для, благодаря которому происходит вся визуализация
-      appBar: AppBar(title: Text('News feed')),
+      appBar: AppBar(
+        title: Text('News feed'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.person),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => AuthScreen()),
+              );
+            }
+          )
+        ],
+      ),
       body: ListView.builder(
         // ListView.builder - стандартный виджет для отображения списка, который ты должен использовать для создания списка с прокруткой.
         // builder - функция строящий новый экран

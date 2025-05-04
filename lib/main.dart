@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+
 import 'screens/home_screen.dart';
 
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // с помощью этой команды мы запускаем Flutter заранее, нужно для установки асинхронных связей 
+  await Firebase.initializeApp(); // устанавливаем Firebase 
   runApp(const MyApp());
 }
 
