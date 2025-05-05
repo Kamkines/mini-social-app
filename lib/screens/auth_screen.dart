@@ -15,32 +15,51 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _signUp() async {
     // Future можно считать аналогом Promise, т.е. тут мы устанавливаем, что мы ждем ответа
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword( // функция используется для регистрации нового пользователя в Firebase с помощью email и пароля. Если почта есть уже в базе, то выйдет ошибка, если все хорошо, то создастся запись в Firebase
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        // функция используется для регистрации нового пользователя в Firebase с помощью email и пароля. Если почта есть уже в базе, то выйдет ошибка, если все хорошо, то создастся запись в Firebase
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
       print('User signed up');
     } catch (error) {
+      String errorMessage = error.toString();
+      errorMessage = errorMessage.replaceAll(RegExp(r'\[.*?\]'), '').trim();
+
       setState(() {
-        _errorMessage = error.toString();
+        _errorMessage = errorMessage;
       });
-      print('Error: $error');
+
+      _clearErrorAfterDelay();
     }
   }
 
   Future<void> _login() async {
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword( // функция используется для входа пользователя в приложение с использованием его email и пароля
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        // функция используется для входа пользователя в приложение с использованием его email и пароля
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      print('User logged in');
     } catch (error) {
+      String errorMessage = error.toString();
+      errorMessage = errorMessage.replaceAll(RegExp(r'\[.*?\]'), '').trim();
+
       setState(() {
-        _errorMessage = error.toString();
+        _errorMessage = errorMessage;
       });
-      print('Error: $error');
+
+      _clearErrorAfterDelay();
     }
+  }
+
+  void _clearErrorAfterDelay() {
+    Future.delayed(const Duration(seconds: 5), () { // функция, которая работает как setTimeout
+      if (mounted) { // переменная булевого типа, которая говорит, активен ли виджет(т.е. виджет в дереве или нет)
+        setState(() {
+          _errorMessage = '';
+        });
+      }
+    });
   }
 
   @override

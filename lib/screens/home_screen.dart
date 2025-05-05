@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import './post_detail_screen.dart';
-import '../data/test_data.dart';
+// import '../data/test_data.dart';
 import './auth_screen.dart';
+import './post_create_screen.dart';
+import '../models/post.dart';
 
 class HomeScreen extends StatelessWidget {
   //Это означает, что HomeScreen не будет иметь состояния, которое меняется по ходу работы приложения.
@@ -19,28 +23,61 @@ class HomeScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(builder: (context) => AuthScreen()),
               );
-            }
-          )
-        ],
-      ),
-      body: ListView.builder(
-        // ListView.builder - стандартный виджет для отображения списка, который ты должен использовать для создания списка с прокруткой.
-        // builder - функция строящий новый экран
-        itemCount:
-            testPosts
-                .length, // определяет, сколько элементов будет в списке (необязательное поле, либо же лучше брать из бд)
-        itemBuilder: (context, index) {
-          // помогает для каждого элемента отобразить данные
-          final post = testPosts[index];
-          return ListTile(
-            title: Text(post.title),
-            subtitle: Text(post.description),
-            onTap: () {
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.add),
+            onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => PostDetailScreen(post: post),
-                ),
+                MaterialPageRoute(builder: (context) => PostCreateScreen()),
+              );
+            },
+          ),
+        ],
+      ),
+      body: StreamBuilder<QuerySnapshot>( // StreamBuilder - это виджет с помощью которого можно автоматически переделывать интерфейс, когда данные обновляются (создаются, удаляются,обновляются). Грубо говорят это некий вебсокет, который слушает(подписан) на бд
+      // QuerySnapshot  - это объект, который содержит результат запроса к Firestore.
+        stream: // устанавливаем что надо слушать, поток данных
+            FirebaseFirestore.instance
+                .collection('posts') // название коллекции (таблицы)
+                .orderBy('date', descending: true) // сортировка
+                .snapshots(), // команда, которая возвращает поток (stream) из Firestore и помогает "слушать" изменения
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+          // пока подключаемся к бд (проверяем статус потока), показываем загрузочный экран 
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(child: Text('There are no posts yet'));
+          }
+          // проверяем данные из бд, т.е. пустая ли бд, а именно поток ничего не принес
+
+          // если данные есть, то происходит получаем именно данные по записям таблицы, лежат в docs и проходим по каждому
+          // snapshot.data - это как раз QuerySnapshot
+          final posts =
+              snapshot.data!.docs.map((doc) {
+                return Post.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+              }).toList(); // Преобразование  .map(...) в обычный список List<Post> в нашем случае
+
+          return ListView.builder(
+            // ListView.builder - стандартный виджет для отображения списка, который ты должен использовать для создания списка с прокруткой.
+            // builder - функция строящий новый экран
+            itemCount: posts.length, // определяет, сколько элементов будет в списке
+            itemBuilder: (context, index) { // помогает для каждого элемента отобразить данные
+              final post = posts[index];
+              return ListTile(
+                title: Text(post.title),
+                subtitle: Text(post.description),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PostDetailScreen(post: post),
+                    ),
+                  );
+                },
               );
             },
           );

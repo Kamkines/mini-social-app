@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart'; // подключаем базовые виджеты Flutter (по типу Scaffold, AppBar, Text, Column, Center, Icon, ListView)
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../models/post.dart';
 
 class PostDetailScreen extends StatefulWidget {
@@ -12,6 +15,30 @@ class PostDetailScreen extends StatefulWidget {
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
   final TextEditingController _commentController = TextEditingController();
+  List<Comment> _comments = [];
+
+  @override // тут мы изменяем родительский initState функцию
+  void initState() {
+    //метод, который вызывается при создании виджета
+    super
+        .initState(); //вызываем родительский initState, чтобы ничего не сломалось
+    _loadComments(); // вызываем функцию по загрузке комментариев до того, как сформируется UI
+  }
+
+  Future<void> _loadComments() async {
+    final commentsSnapshot =
+        await FirebaseFirestore.instance
+            .collection('comments')
+            .where('postId', isEqualTo: widget.post.postId)
+            .get();
+
+    setState(() {
+      _comments =
+          commentsSnapshot.docs.map((doc) {
+            return Comment.fromMap(doc.data() as Map<String, dynamic>);
+          }).toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,9 +78,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             ),
             Expanded(
               child: ListView.builder(
-                itemCount: widget.post.comments.length,
+                itemCount: _comments.length,
                 itemBuilder: (context, index) {
-                  final comment = widget.post.comments[index];
+                  final comment = _comments[index];
                   return ListTile(
                     title: Text(comment.userId),
                     subtitle: Text(comment.text),
@@ -67,13 +94,38 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
-  void _submitComment() {
+  void _submitComment() async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return;
+    }
+
     final commentText = _commentController.text;
+
     if (commentText.isNotEmpty) {
-      var newComment = Comment(userId: 'User', postId: widget.post.postId, text: commentText, date: DateTime.now());
+      final commentData = {
+        'userId': user.uid,
+        'postId': widget.post.postId,
+        'text': commentText,
+        'date': DateTime.now(),
+      };
+
+      await FirebaseFirestore.instance.collection('comments').add(commentData);
+
+      final newComment = Comment(
+        userId: user.uid,
+        postId: '/posts/$widget.post.postId',
+        text: commentText,
+        date: DateTime.now(),
+      );
+
+      print('Comments added');
+
       setState(() {
-        widget.post.comments.add(newComment);
+        _comments.add(newComment);
       });
+
       _commentController.clear(); // очистка поля ввода
     }
   }
@@ -105,6 +157,7 @@ controller - то что позволяет контролировать, что
 decoration — это оформление
 IconButton — это встроенный виджет, который представляет собой кнопку с иконкой
 TextEditingController - устанавливаем, чтобы можно было управлять текстом из поля ввода
+Future.wait — это позволяет запускать несколько Future параллельно и ждать, пока все они завершатся.
 
 Работа с состоянием (StatefulWidget), т.е. когда у нас экран меняется динамически, в зависимости от каких-то данных
 createState - создает состояние для виджета, т.е. для PostDetailScreen

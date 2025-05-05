@@ -59,6 +59,7 @@ dependencies: # установка зависимостей
   cupertino_icons: ^1.0.8
   firebase_auth: ^5.5.3
   firebase_core: ^3.13.0
+  cloud_firestore: ^5.6.7
 
 dev_dependencies: # установка зависимостей для разработки
   flutter:
