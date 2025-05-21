@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:mini_social_app/providers/user_provider.dart';
+import 'package:provider/provider.dart';
 
 import 'screens/home_screen.dart';
 
-
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // с помощью этой команды мы запускаем Flutter заранее, нужно для установки асинхронных связей 
-  await Firebase.initializeApp(); // устанавливаем Firebase 
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized(); // с помощью этой команды мы запускаем Flutter заранее, нужно для установки асинхронных связей
+  await Firebase.initializeApp(); // устанавливаем Firebase
+  runApp(
+    ChangeNotifierProvider(create: (_) => UserProvider(), child: const MyApp()), // ChangeNotifierProvider - это инструмент библиотеки Provider Flutter. Помогает в регистрации провайдера для апки
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -36,11 +39,15 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home:  HomeScreen()
+      home: HomeScreen(),
     );
   }
 }
 
+/*
+
+
+*/
 
 /* 
 Файл, точка входа
@@ -48,5 +55,6 @@ class MyApp extends StatelessWidget {
 Передача по сути как в React, только необязательно передавать четко какой класс ты передаешь, ибо в Dart все само найдется
 по сути тут все выглядит так 
 import * путь
+
 !!! Если класс назывался _Name, то он был бы приватным и его нельзя было бы импортировать 
 */

@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+
+import 'home_screen.dart';
+import '../providers/user_provider.dart';
 
 class AuthScreen extends StatefulWidget {
   @override
@@ -20,7 +25,38 @@ class _AuthScreenState extends State<AuthScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+
+      User? user = FirebaseAuth.instance.currentUser;
+      context.read<UserProvider>().setUser(user); 
+      /*
+      context — это текущий "контекст" виджета
+      read<UserProvider>() - получаем объект
+      .setUser(user) — устанавливаем значение вручную (по функции из UserProvider)
+
+      Вручную устанавливаем т.к. лучше для UI пользователя, чтобы была мгновенная реакция
+      Если же реакция не нужна, то вручную устанавливать значение не надо и дополнять данные функции (авторизации/регистрации) не надо
+      т.к. UserProvider уже работает с Firebase, а если в нем что-то меняется, то у меня будет authStateChanges ловить изменения и тянуть уже моему пользователю
+      */
+
+      final userData = {
+        'displayName': 'Default name',
+        'email': _emailController.text.trim(),
+        'photoUrl': '',
+        'createdAt': DateTime.now(),
+      };
+
+      if (user == null) {
+        return;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid) // устанавливаем значение для DocumentId
+          .set(userData); // сохраняем данные в записи коллекции
+
       print('User signed up');
+
+      _navigateHome();
     } catch (error) {
       String errorMessage = error.toString();
       errorMessage = errorMessage.replaceAll(RegExp(r'\[.*?\]'), '').trim();
@@ -35,11 +71,16 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _login() async {
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         // функция используется для входа пользователя в приложение с использованием его email и пароля
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+
+      final user = userCredential.user;
+      context.read<UserProvider>().setUser(user);
+
+      _navigateHome();
     } catch (error) {
       String errorMessage = error.toString();
       errorMessage = errorMessage.replaceAll(RegExp(r'\[.*?\]'), '').trim();
@@ -52,9 +93,18 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  _navigateHome() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomeScreen()),
+    );
+  }
+
   void _clearErrorAfterDelay() {
-    Future.delayed(const Duration(seconds: 5), () { // функция, которая работает как setTimeout
-      if (mounted) { // переменная булевого типа, которая говорит, активен ли виджет(т.е. виджет в дереве или нет)
+    Future.delayed(const Duration(seconds: 5), () {
+      // функция, которая работает как setTimeout
+      if (mounted) {
+        // переменная булевого типа, которая говорит, активен ли виджет(т.е. виджет в дереве или нет)
         setState(() {
           _errorMessage = '';
         });

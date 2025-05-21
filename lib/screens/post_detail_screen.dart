@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart'; // подключаем базовые виджеты Flutter (по типу Scaffold, AppBar, Text, Column, Center, Icon, ListView)
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 
 import '../models/post.dart';
+import '../providers/user_provider.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final Post post;
@@ -15,7 +17,7 @@ class PostDetailScreen extends StatefulWidget {
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
   final TextEditingController _commentController = TextEditingController();
-  List<Comment> _comments = [];
+  List<CommentWithUser> _comments = [];
 
   @override // тут мы изменяем родительский initState функцию
   void initState() {
@@ -26,22 +28,37 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   Future<void> _loadComments() async {
+    final postRef = FirebaseFirestore.instance
+        .collection('posts')
+        .doc(
+          widget.post.postId,
+        ); //создает объект DocumentReference, который указывает на документ в коллекции posts с ID, заданным в doc(widget.post.postId)
+
     final commentsSnapshot =
         await FirebaseFirestore.instance
             .collection('comments')
-            .where('postId', isEqualTo: widget.post.postId)
-            .get();
+            .where(
+              'postId',
+              isEqualTo: postRef,
+            ) // условие по которому мы ищем комментарии (возвращает список, как list rows)
+            .get(); // функция которая помогает вернуть данные
+
+    /*print(
+      'commentsSnapshot содержит ${commentsSnapshot.docs.length} документов',
+    ); commentsSnapshot.docs - список, в котором лежат данные, length - количество*/
+    final loadedComments = await Future.wait(
+      commentsSnapshot.docs.map((doc) => CommentWithUser.fromSnapshot(doc)),
+    );
 
     setState(() {
-      _comments =
-          commentsSnapshot.docs.map((doc) {
-            return Comment.fromMap(doc.data() as Map<String, dynamic>);
-          }).toList();
+      _comments = loadedComments;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = Provider.of<UserProvider>(context).user;
+
     return Scaffold(
       appBar: AppBar(title: Text(widget.post.title)),
       body: Padding(
@@ -54,35 +71,43 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             Text('Date of publication: ${widget.post.date.toLocal()}'),
             SizedBox(height: 24),
             Text('Comments:', style: TextStyle(fontWeight: FontWeight.bold)),
-            Padding(
-              padding: const EdgeInsets.only(top: 16.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _commentController,
-                      decoration: InputDecoration(
-                        hintText: 'Add a comment...',
-                        border: OutlineInputBorder(),
+            user != null
+                ? Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _commentController,
+                          decoration: InputDecoration(
+                            hintText: 'Add a comment...',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
                       ),
-                    ),
+                      IconButton(
+                        icon: Icon(Icons.send),
+                        onPressed: () {
+                          _submitComment();
+                        },
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    icon: Icon(Icons.send),
-                    onPressed: () {
-                      _submitComment();
-                    },
+                )
+                : Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    'You must be logged in to write a comment.',
+                    style: TextStyle(color: Colors.grey),
                   ),
-                ],
-              ),
-            ),
+                ),
             Expanded(
               child: ListView.builder(
                 itemCount: _comments.length,
                 itemBuilder: (context, index) {
                   final comment = _comments[index];
                   return ListTile(
-                    title: Text(comment.userId),
+                    title: Text(comment.displayName),
                     subtitle: Text(comment.text),
                   );
                 },
@@ -95,7 +120,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   void _submitComment() async {
-    User? user = FirebaseAuth.instance.currentUser;
+    final user = context.read<UserProvider>().user;
 
     if (user == null) {
       return;
@@ -105,17 +130,30 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
     if (commentText.isNotEmpty) {
       final commentData = {
-        'userId': user.uid,
-        'postId': widget.post.postId,
+        'userId': FirebaseFirestore.instance.collection('users').doc(user.uid),
+        'postId': FirebaseFirestore.instance
+            .collection('posts')
+            .doc(widget.post.postId),
         'text': commentText,
-        'date': DateTime.now(),
+        'date': FieldValue.serverTimestamp(),
       };
 
       await FirebaseFirestore.instance.collection('comments').add(commentData);
 
-      final newComment = Comment(
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+
+      final userData = userDoc.data();
+
+      final displayName = userData?['displayName'] ?? 'Unknown';
+
+      final newComment = CommentWithUser(
+        displayName: displayName,
         userId: user.uid,
-        postId: '/posts/$widget.post.postId',
+        postId: widget.post.postId,
         text: commentText,
         date: DateTime.now(),
       );

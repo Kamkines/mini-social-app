@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+
 
 import './post_detail_screen.dart';
-// import '../data/test_data.dart';
 import './auth_screen.dart';
 import './post_create_screen.dart';
 import '../models/post.dart';
+import '../providers/user_provider.dart';
+
 
 class HomeScreen extends StatelessWidget {
   //Это означает, что HomeScreen не будет иметь состояния, которое меняется по ходу работы приложения.
   @override
   Widget build(BuildContext context) {
+    final user = Provider.of<UserProvider>(context).user;
+
     return Scaffold(
       // контейнер для, благодаря которому происходит вся визуализация
       appBar: AppBar(
@@ -25,15 +30,16 @@ class HomeScreen extends StatelessWidget {
               );
             },
           ),
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => PostCreateScreen()),
-              );
-            },
-          ),
+          if(user != null)
+            IconButton(
+              icon: Icon(Icons.add),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => PostCreateScreen()),
+                );
+              },
+            ),
         ],
       ),
       body: StreamBuilder<QuerySnapshot>( // StreamBuilder - это виджет с помощью которого можно автоматически переделывать интерфейс, когда данные обновляются (создаются, удаляются,обновляются). Грубо говорят это некий вебсокет, который слушает(подписан) на бд

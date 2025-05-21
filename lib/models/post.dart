@@ -15,8 +15,8 @@ class Comment {
 
   factory Comment.fromMap(Map<String, dynamic> data) {
     return Comment(
-      userId: data['userId'] ?? '',
-      postId: data['postId'] ?? '',
+      userId: (data['userId'] as DocumentReference?)?.id ?? '',
+      postId: (data['postId'] as DocumentReference?)?.id ?? '',
       text: data['text'] ?? '',
       date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -47,6 +47,53 @@ class Post {
   }
 }
 
+class CommentWithUser extends Comment {
+  final String displayName;
+
+  CommentWithUser({
+    required this.displayName,
+    required super.userId,
+    required super.postId,
+    required super.text,
+    required super.date,
+  });
+
+  static Future<CommentWithUser> fromSnapshot(DocumentSnapshot doc) async {
+    // Это статический асинхронный метод
+    // static потому что мы вызываем его без создания экземпляра класса (мы как бы говорим, я ещё не создал CommentWithUser — сначала мне нужно из документа его собрать)
+    // DocumentSnapshot — это одна запись из коллекции в Firestore.
+    try {
+      final data =
+          doc.data() as Map<String, dynamic>; // получаем данные из comments
+      final comment = Comment.fromMap(data); // преобразуем в Comment класс
+      final userRef =
+          data['userId']
+              as DocumentReference; // ссылка на пользователя с типом DocumentReference(лукап)
+      final userSnap = await userRef.get(); // получаем данные по users
+      final userData =
+          userSnap.data() as Map<String, dynamic>?; //преобразуем данные юзера
+      final displayName =
+          userData?['displayName'] ?? 'Unknown'; // получаем DisplayName
+
+      return CommentWithUser(
+        displayName: displayName,
+        userId: comment.userId,
+        postId: comment.postId,
+        text: comment.text,
+        date: comment.date,
+      );
+    } catch (error) {
+      print('Ошибка при загрузке комментария: $error');
+      return CommentWithUser(
+        displayName: 'Ошибка',
+        userId: '',
+        postId: '',
+        text: 'Не удалось загрузить комментарий',
+        date: DateTime.now(),
+      );
+    }
+  }
+}
 
 /*
 final - означает, что значение в переменной назначается всего ОДИН РАЗ (не дает переопределять)

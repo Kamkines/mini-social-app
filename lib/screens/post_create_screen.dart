@@ -1,6 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import './post_detail_screen.dart';
+import '../models/post.dart';
+import '../providers/user_provider.dart';
 
 class PostCreateScreen extends StatefulWidget {
   @override
@@ -37,9 +42,9 @@ class _PostCreateScreenState extends State<PostCreateScreen> {
             TextButton(
               onPressed: () {
                 _createPostFunction();
-              }, 
-              child: Text('Create a post')
-              )
+              },
+              child: Text('Create a post'),
+            ),
           ],
         ),
       ),
@@ -47,9 +52,9 @@ class _PostCreateScreenState extends State<PostCreateScreen> {
   }
 
   void _createPostFunction() async {
-    User? user = FirebaseAuth.instance.currentUser;
+    final user = context.read<UserProvider>().user;
 
-    if(user == null){
+    if (user == null) {
       return;
     }
 
@@ -57,14 +62,30 @@ class _PostCreateScreenState extends State<PostCreateScreen> {
     final postText = _postController.text;
 
     final postData = {
-      'userId': user.uid,
+      'userId': FirebaseFirestore.instance.collection('users').doc(user.uid),
       'title': titleText,
       'description': postText,
-      'date': DateTime.now()
+      'date': FieldValue.serverTimestamp(), // встроенный метод из Firebase Cloud (подключен cloud_firestore). Устанавливает серверное время в поле и сохраняет его в формате TimeStamp
     };
 
-    await FirebaseFirestore.instance.collection('posts').add(postData);
-    print('Post added');
+    try {
+      final newPostRef = await FirebaseFirestore.instance
+          .collection('posts')
+          .add(postData);
+
+
+      final snapshot = await newPostRef.get(); // ждем, когда создастся запись в коллекции и берем уже данные оттуда. Нужно из-за разности в типах (Date/Timestamp)
+      final newPost = Post.fromMap(snapshot.data()!, snapshot.id);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PostDetailScreen(post: newPost),
+        ),
+      );
+    } catch (error, stackTrace) {
+      print('Ошибка при создании поста: $error');
+      print(stackTrace);
+    }
   }
 }
-
