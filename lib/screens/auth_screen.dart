@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 
 import 'home_screen.dart';
-import '../providers/user_provider.dart';
+import '../providers/provider.dart';
 
 class AuthScreen extends StatefulWidget {
   @override

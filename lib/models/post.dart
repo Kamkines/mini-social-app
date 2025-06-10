@@ -5,12 +5,14 @@ class Comment {
   final String postId;
   final String text;
   final DateTime date;
+  final String? parentCommentId;
 
   Comment({
     required this.userId,
     required this.postId,
     required this.text,
     required this.date,
+    this.parentCommentId,
   });
 
   factory Comment.fromMap(Map<String, dynamic> data) {
@@ -19,6 +21,7 @@ class Comment {
       postId: (data['postId'] as DocumentReference?)?.id ?? '',
       text: data['text'] ?? '',
       date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      parentCommentId: (data['parentCommentId'] as DocumentReference?)?.id,
     );
   }
 }
@@ -49,13 +52,16 @@ class Post {
 
 class CommentWithUser extends Comment {
   final String displayName;
+  final String commentId;
 
   CommentWithUser({
+    required this.commentId,
     required this.displayName,
     required super.userId,
     required super.postId,
     required super.text,
     required super.date,
+    super.parentCommentId,
   });
 
   static Future<CommentWithUser> fromSnapshot(DocumentSnapshot doc) async {
@@ -76,23 +82,34 @@ class CommentWithUser extends Comment {
           userData?['displayName'] ?? 'Unknown'; // получаем DisplayName
 
       return CommentWithUser(
+        commentId: doc.id,
         displayName: displayName,
         userId: comment.userId,
         postId: comment.postId,
         text: comment.text,
         date: comment.date,
+        parentCommentId: comment.parentCommentId,
       );
     } catch (error) {
       print('Ошибка при загрузке комментария: $error');
       return CommentWithUser(
+        commentId: '',
         displayName: 'Ошибка',
         userId: '',
         postId: '',
         text: 'Не удалось загрузить комментарий',
         date: DateTime.now(),
+        parentCommentId: '',
       );
     }
   }
+}
+
+class CommentNode {
+  final CommentWithUser comment; // Сам комментарий
+  final List<CommentNode> replies; // Список ответов (другие узлы)
+
+  CommentNode({required this.comment, this.replies = const []}); // Конструктор с обязательным комментарием и опциональным списком ответов
 }
 
 /*

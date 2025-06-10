@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 
 import './post_detail_screen.dart';
 import '../models/post.dart';
-import '../providers/user_provider.dart';
+import '../providers/provider.dart';
 
 class PostCreateScreen extends StatefulWidget {
   @override

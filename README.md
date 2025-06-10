@@ -16,8 +16,6 @@ For help getting started with Flutter development, view the
 samples, guidance on mobile development, and a full API reference.
 
 Further action plan:
-4. Настроить кэширование комментариев (например, через провайдер или SharedPreferences).
-5. Добавить поддержку реплаев на комментарии (через `parentCommentId`).
 7. Поменять все на рутинг и ходить через (pushNamed)
 8. Расширить форму регистрации (ввод displayName, загрузка фотографии и т.п);
 9. Настроить дизайн (аватарки, стили, отступы, темы).

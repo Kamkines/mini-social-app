@@ -4,7 +4,64 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
 import '../models/post.dart';
-import '../providers/user_provider.dart';
+import '../providers/provider.dart';
+
+class CommentTreeWidget extends StatelessWidget {
+  // класс для отображения дерева комментарий
+  final CommentNode node; // текущий комментарий и его ответы
+  final int indentLevel; // уровень вложенности для отступов
+  final Function(String?, String?) onReply; // ф-ция для обработки нажатия Reply
+
+  const CommentTreeWidget({
+    super.key, // Ключ для управления виджетом
+    required this.node, // Обязательный параметр (комментарий)
+    this.indentLevel = 0, // По умолчанию 0 (нет отступов)
+    required this.onReply, // Обязательная функция обратного вызова
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start, // выравниванием текст слева
+      children: [
+        Padding(
+          padding: EdgeInsets.only(left: 16.0 * indentLevel),
+          child: ListTile(
+            title: Text(
+              node.comment.displayName, // Имя пользователя
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(node.comment.text), // Текст комментария
+                Text(
+                  node.comment.date.toLocal().toString(),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                TextButton(
+                  onPressed: () {
+                    onReply(
+                      node.comment.commentId,
+                      node.comment.displayName,
+                    ); // Вызов функции при нажатии "Reply"
+                  },
+                  child: const Text('Reply'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        for (var reply in node.replies) // Цикл для отображения всех ответов
+          CommentTreeWidget(
+            node: reply, // Передаем следующий комментарий
+            indentLevel: indentLevel + 1, // Увеличиваем уровень вложенности
+            onReply: onReply, // Передаем функцию дальше
+          ),
+      ],
+    );
+  }
+}
 
 class PostDetailScreen extends StatefulWidget {
   final Post post;
@@ -12,111 +69,73 @@ class PostDetailScreen extends StatefulWidget {
   const PostDetailScreen({super.key, required this.post});
 
   @override
-  _PostDetailScreenState createState() => _PostDetailScreenState(); //
+  _PostDetailScreenState createState() => _PostDetailScreenState();
 }
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
   final TextEditingController _commentController = TextEditingController();
-  List<CommentWithUser> _comments = [];
+  bool _isInit = true;
+
+  String?
+  _replyCommentId; //переменная , которая хранит в себе id коммента, на которым мы отвечаем
+  String?
+  _replyToDisplayName; //переменная , которая хранит в себе найм пользователя коммента, который его написал
 
   @override // тут мы изменяем родительский initState функцию
   void initState() {
     //метод, который вызывается при создании виджета
     super
         .initState(); //вызываем родительский initState, чтобы ничего не сломалось
-    _loadComments(); // вызываем функцию по загрузке комментариев до того, как сформируется UI
   }
 
-  Future<void> _loadComments() async {
-    final postRef = FirebaseFirestore.instance
-        .collection('posts')
-        .doc(
-          widget.post.postId,
-        ); //создает объект DocumentReference, который указывает на документ в коллекции posts с ID, заданным в doc(widget.post.postId)
+  List<CommentNode> buildCommentTree(List<CommentWithUser> comments) { // Построение дерева комментариев
+    final Map<String, CommentNode> map = {}; // Хранит все комментарии с их ID как ключ
+    final List<CommentNode> roots = []; // Список корневых комментариев
 
-    final commentsSnapshot =
-        await FirebaseFirestore.instance
-            .collection('comments')
-            .where(
-              'postId',
-              isEqualTo: postRef,
-            ) // условие по которому мы ищем комментарии (возвращает список, как list rows)
-            .get(); // функция которая помогает вернуть данные
+    for (var instanceComment in comments) { // Проходим по всем комментариям
+      map[instanceComment.commentId] = CommentNode( // Создаем узел для каждого комментария
+        comment: instanceComment, // Сам комментарий
+        replies: [], // Пустой список ответов
+      );
+    }
 
-    /*print(
-      'commentsSnapshot содержит ${commentsSnapshot.docs.length} документов',
-    ); commentsSnapshot.docs - список, в котором лежат данные, length - количество*/
-    final loadedComments = await Future.wait(
-      commentsSnapshot.docs.map((doc) => CommentWithUser.fromSnapshot(doc)),
-    );
+    for (var instanceComment in comments) { // Проходим снова
+      final parentId = instanceComment.parentCommentId; // ID родительского комментария
+      if (parentId != null && map.containsKey(parentId)) { // Если есть родитель и он существует
+        map[parentId]!.replies.add(map[instanceComment.commentId]!); // Добавляем как ответ
+      } else { // Если нет родителя
+        roots.add(map[instanceComment.commentId]!); // Добавляем в корневые
+      }
+    }
 
-    setState(() {
-      _comments = loadedComments;
-    });
+    return roots; // Возвращаем список корневых комментариев
   }
 
   @override
-  Widget build(BuildContext context) {
-    final user = Provider.of<UserProvider>(context).user;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isInit) {
+      final provider = Provider.of<CommentsProvider>(context, listen: false);
+      provider.listenToComments(widget.post.postId);
+      _isInit = false;
+    }
+  }
 
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.post.title)),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.post.description, style: TextStyle(fontSize: 18)),
-            SizedBox(height: 16),
-            Text('Date of publication: ${widget.post.date.toLocal()}'),
-            SizedBox(height: 24),
-            Text('Comments:', style: TextStyle(fontWeight: FontWeight.bold)),
-            user != null
-                ? Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _commentController,
-                          decoration: InputDecoration(
-                            hintText: 'Add a comment...',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.send),
-                        onPressed: () {
-                          _submitComment();
-                        },
-                      ),
-                    ],
-                  ),
-                )
-                : Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text(
-                    'You must be logged in to write a comment.',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _comments.length,
-                itemBuilder: (context, index) {
-                  final comment = _comments[index];
-                  return ListTile(
-                    title: Text(comment.displayName),
-                    subtitle: Text(comment.text),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  @override
+  void dispose() {
+    Provider.of<CommentsProvider>(
+      context,
+      listen: false,
+    ).cancelSubscription(widget.post.postId);
+    _commentController.dispose(); // Очистка контроллера
+    super.dispose();
+  }
+
+  void _setReply(String? commentId, String? displayName) { // Обновление состояния для ответа
+    setState(() {
+      _replyCommentId = commentId; // Устанавливаем ID комментария для ответа
+      _replyToDisplayName = displayName; // Устанавливаем имя пользователя для отображения
+    });
   }
 
   void _submitComment() async {
@@ -136,36 +155,119 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             .doc(widget.post.postId),
         'text': commentText,
         'date': FieldValue.serverTimestamp(),
+        'parentCommentId': FirebaseFirestore.instance
+            .collection('comments')
+            .doc(_replyCommentId),
       };
 
       await FirebaseFirestore.instance.collection('comments').add(commentData);
-
-      final userDoc =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .get();
-
-      final userData = userDoc.data();
-
-      final displayName = userData?['displayName'] ?? 'Unknown';
-
-      final newComment = CommentWithUser(
-        displayName: displayName,
-        userId: user.uid,
-        postId: widget.post.postId,
-        text: commentText,
-        date: DateTime.now(),
-      );
-
       print('Comments added');
 
-      setState(() {
-        _comments.add(newComment);
-      });
-
       _commentController.clear(); // очистка поля ввода
+      setState(() {
+        _replyCommentId = null;
+        _replyToDisplayName = null;
+      });
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = Provider.of<UserProvider>(context).user;
+
+    final commentsProvider = Provider.of<CommentsProvider>(context);
+    final comments = commentsProvider.getComments(widget.post.postId);
+
+    final commentTree = comments != null ? buildCommentTree(comments) : null;
+
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.post.title)),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.post.description, style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 16),
+            Text('Date of publication: ${widget.post.date.toLocal()}'),
+            const SizedBox(height: 24),
+            const Text(
+              'Comments:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (user != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_replyToDisplayName != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Row(
+                          children: [
+                            Text('Replying to $_replyToDisplayName'),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () {
+                                setState(() {
+                                  _replyCommentId = null;
+                                  _replyToDisplayName = null;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _commentController,
+                            decoration: const InputDecoration(
+                              hintText: 'Add a comment...',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.send),
+                          onPressed: _submitComment,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              )
+            else
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  'You must be logged in to write a comment.',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+            Expanded(
+              child:
+                  comments == null
+                      ? const Center(child: CircularProgressIndicator())
+                      : commentTree!.isEmpty
+                      ? const Center(child: Text('No comments yet.'))
+                      : ListView.builder(
+                        itemCount: commentTree.length,
+                        itemBuilder: (context, index) {
+                          return CommentTreeWidget(
+                            node: commentTree[index],
+                            onReply: _setReply,
+                          );
+                        },
+                      ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

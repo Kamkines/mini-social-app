@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:mini_social_app/providers/user_provider.dart';
+import 'package:mini_social_app/providers/provider.dart';
 import 'package:provider/provider.dart';
 
 import 'screens/home_screen.dart';
@@ -9,7 +9,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // с помощью этой команды мы запускаем Flutter заранее, нужно для установки асинхронных связей
   await Firebase.initializeApp(); // устанавливаем Firebase
   runApp(
-    ChangeNotifierProvider(create: (_) => UserProvider(), child: const MyApp()), // ChangeNotifierProvider - это инструмент библиотеки Provider Flutter. Помогает в регистрации провайдера для апки
+    MultiProvider( // MultiProvider — обёртка, чтобы не вкладывать кучу ChangeNotifierProvider друг в друга
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(
+          create: (_) => CommentsProvider(),
+        ), // добавляем кэш комментариев
+      ],
+      child: const MyApp(),
+    ), // ChangeNotifierProvider - это инструмент библиотеки Provider Flutter. Помогает в регистрации провайдера для апки
   );
 }
 

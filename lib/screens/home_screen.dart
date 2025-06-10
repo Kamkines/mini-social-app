@@ -7,7 +7,7 @@ import './post_detail_screen.dart';
 import './auth_screen.dart';
 import './post_create_screen.dart';
 import '../models/post.dart';
-import '../providers/user_provider.dart';
+import '../providers/provider.dart';
 
 
 class HomeScreen extends StatelessWidget {
